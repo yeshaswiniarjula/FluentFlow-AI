@@ -1,0 +1,10 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "env": {
+    "NEXT_PUBLIC_BACKEND_WS_URL": "@backend_ws_url",
+    "NEXT_PUBLIC_BACKEND_API_URL": "@backend_api_url"
+  }
+}

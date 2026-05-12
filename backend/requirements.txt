@@ -1,0 +1,20 @@
+fastapi
+uvicorn[standard]
+websockets
+asyncpg
+sqlalchemy[asyncio]
+alembic
+python-dotenv
+httpx
+pydantic>=2.0
+pydantic-settings
+aiosqlite
+groq
+deepgram-sdk
+
+# LiveKit Dependencies
+livekit
+livekit-agents
+livekit-plugins-openai
+livekit-plugins-deepgram
+livekit-plugins-silero
