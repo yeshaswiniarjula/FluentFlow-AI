@@ -2,137 +2,152 @@ import { v4 as uuidv4 } from 'uuid';
 
 // ─── State Types ─────────────────────────────────────────────────────────────
 
-export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
+export type WSStatus = 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
+export type OrbState = 'idle' | 'listening' | 'processing' | 'speaking' | 'interrupted';
+export type MicPermission = 'prompt' | 'granted' | 'denied';
 
-export type AppState =
-  | 'IDLE'
-  | 'LISTENING'
-  | 'TRANSCRIBING'
-  | 'THINKING'
-  | 'SPEAKING'
-  | 'INTERRUPTED'
-  | 'ERROR';
-
-export interface GrammarCorrection {
-  original: string;
-  corrected: string;
-  message: string;
+export interface MessageCorrection {
+  wrong: string;
+  right: string;
 }
 
-export interface ConversationMessage {
+export interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'ai';
   content: string;
-  timestamp: string;
-  correction?: GrammarCorrection;
+  corrections?: MessageCorrection[];
 }
 
-export interface ConversationState {
-  connectionStatus: ConnectionStatus;
+export interface FluentState {
+  // Connection
+  wsStatus: WSStatus;
   sessionId: string | null;
-  appState: AppState;
-  transcript: string;
-  conversation: ConversationMessage[];
-  isAISpeaking: boolean;
-  isMicActive: boolean;
-  lastError: string | null;
+  latency: number;
+  
+  // Audio states
+  orbState: OrbState;
+  micPermission: MicPermission;
+  
+  // Transcript
+  liveTranscript: string;
+  isListening: boolean;
+  
+  // Chat
+  messages: Message[];
+  
+  // Audio levels for visualization
+  userAudioLevels: number[]; // 0-255 array[8]
+  aiAudioLevel: number; // 0-1
+  
+  // Controls
+  isPaused: boolean;
 }
 
 // ─── Action Types ─────────────────────────────────────────────────────────────
 
-export type ConversationAction =
-  | { type: 'SET_CONNECTION_STATUS'; payload: ConnectionStatus }
+export type FluentAction =
+  | { type: 'SET_WS_STATUS'; payload: WSStatus }
   | { type: 'SET_SESSION_ID'; payload: string | null }
-  | { type: 'SET_APP_STATE'; payload: AppState }
-  | { type: 'SET_TRANSCRIPT'; payload: string }
-  | { type: 'ADD_USER_MESSAGE'; payload: { content: string; timestamp: string } }
-  | { type: 'ADD_AI_MESSAGE'; payload: { content: string; timestamp: string } }
-  | {
-      type: 'ADD_GRAMMAR_CORRECTION';
-      payload: { messageId: string; correction: GrammarCorrection };
-    }
-  | { type: 'SET_AI_SPEAKING'; payload: boolean }
-  | { type: 'SET_MIC_ACTIVE'; payload: boolean }
-  | { type: 'SET_ERROR'; payload: string }
-  | { type: 'CLEAR_ERROR' }
+  | { type: 'SET_LATENCY'; payload: number }
+  | { type: 'SET_ORB_STATE'; payload: OrbState }
+  | { type: 'SET_MIC_PERMISSION'; payload: MicPermission }
+  | { type: 'SET_LIVE_TRANSCRIPT'; payload: string }
+  | { type: 'SET_IS_LISTENING'; payload: boolean }
+  | { type: 'ADD_MESSAGE'; payload: Message }
+  | { type: 'APPEND_TO_LAST_MESSAGE'; payload: { role: 'user' | 'ai'; content: string } }
+  | { type: 'ADD_CORRECTION'; payload: { messageId: string; correction: MessageCorrection } }
+  | { type: 'SET_USER_AUDIO_LEVELS'; payload: number[] }
+  | { type: 'SET_AI_AUDIO_LEVEL'; payload: number }
+  | { type: 'SET_IS_PAUSED'; payload: boolean }
   | { type: 'RESET' };
 
 // ─── Initial State ────────────────────────────────────────────────────────────
 
-export const initialState: ConversationState = {
-  connectionStatus: 'disconnected',
+export const initialState: FluentState = {
+  wsStatus: 'disconnected',
   sessionId: null,
-  appState: 'IDLE',
-  transcript: '',
-  conversation: [],
-  isAISpeaking: false,
-  isMicActive: false,
-  lastError: null,
+  latency: 0,
+  orbState: 'idle',
+  micPermission: 'prompt',
+  liveTranscript: '',
+  isListening: false,
+  messages: [],
+  userAudioLevels: new Array(8).fill(0),
+  aiAudioLevel: 0,
+  isPaused: false,
 };
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
 
-export function conversationReducer(
-  state: ConversationState,
-  action: ConversationAction
-): ConversationState {
+export function fluentReducer(
+  state: FluentState,
+  action: FluentAction
+): FluentState {
   switch (action.type) {
-    case 'SET_CONNECTION_STATUS':
-      return { ...state, connectionStatus: action.payload };
+    case 'SET_WS_STATUS':
+      return { ...state, wsStatus: action.payload };
 
     case 'SET_SESSION_ID':
       return { ...state, sessionId: action.payload };
 
-    case 'SET_APP_STATE':
-      return { ...state, appState: action.payload };
+    case 'SET_LATENCY':
+      return { ...state, latency: action.payload };
 
-    case 'SET_TRANSCRIPT':
-      return { ...state, transcript: action.payload };
+    case 'SET_ORB_STATE':
+      return { ...state, orbState: action.payload };
 
-    case 'ADD_USER_MESSAGE': {
-      const msg: ConversationMessage = {
-        id: uuidv4(),
-        role: 'user',
-        content: action.payload.content,
-        timestamp: action.payload.timestamp,
-      };
-      return {
-        ...state,
-        conversation: [...state.conversation, msg],
-        transcript: '', // clear live transcript once message is committed
-      };
+    case 'SET_MIC_PERMISSION':
+      return { ...state, micPermission: action.payload };
+
+    case 'SET_LIVE_TRANSCRIPT':
+      return { ...state, liveTranscript: action.payload };
+
+    case 'SET_IS_LISTENING':
+      return { ...state, isListening: action.payload };
+
+    case 'ADD_MESSAGE':
+      return { ...state, messages: [...state.messages, action.payload] };
+
+    case 'APPEND_TO_LAST_MESSAGE': {
+      const lastMessage = state.messages[state.messages.length - 1];
+      if (lastMessage && lastMessage.role === action.payload.role) {
+        const updatedMessages = [...state.messages];
+        updatedMessages[updatedMessages.length - 1] = {
+          ...lastMessage,
+          content: lastMessage.content + action.payload.content,
+        };
+        return { ...state, messages: updatedMessages };
+      } else {
+        return {
+          ...state,
+          messages: [
+            ...state.messages,
+            { id: uuidv4(), role: action.payload.role, content: action.payload.content },
+          ],
+        };
+      }
     }
 
-    case 'ADD_AI_MESSAGE': {
-      const msg: ConversationMessage = {
-        id: uuidv4(),
-        role: 'assistant',
-        content: action.payload.content,
-        timestamp: action.payload.timestamp,
-      };
-      return { ...state, conversation: [...state.conversation, msg] };
-    }
-
-    case 'ADD_GRAMMAR_CORRECTION': {
-      const updated = state.conversation.map(msg =>
+    case 'ADD_CORRECTION': {
+      const updatedMessages = state.messages.map(msg =>
         msg.id === action.payload.messageId
-          ? { ...msg, correction: action.payload.correction }
+          ? { 
+              ...msg, 
+              corrections: [...(msg.corrections || []), action.payload.correction] 
+            }
           : msg
       );
-      return { ...state, conversation: updated };
+      return { ...state, messages: updatedMessages };
     }
 
-    case 'SET_AI_SPEAKING':
-      return { ...state, isAISpeaking: action.payload };
+    case 'SET_USER_AUDIO_LEVELS':
+      return { ...state, userAudioLevels: action.payload };
 
-    case 'SET_MIC_ACTIVE':
-      return { ...state, isMicActive: action.payload };
+    case 'SET_AI_AUDIO_LEVEL':
+      return { ...state, aiAudioLevel: action.payload };
 
-    case 'SET_ERROR':
-      return { ...state, lastError: action.payload, appState: 'ERROR' };
-
-    case 'CLEAR_ERROR':
-      return { ...state, lastError: null };
+    case 'SET_IS_PAUSED':
+      return { ...state, isPaused: action.payload };
 
     case 'RESET':
       return { ...initialState };

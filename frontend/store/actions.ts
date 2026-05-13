@@ -1,63 +1,81 @@
-import type { ConversationAction, AppState, ConnectionStatus, GrammarCorrection } from './conversation.store';
+import type { 
+  FluentAction, 
+  WSStatus, 
+  OrbState, 
+  MicPermission, 
+  Message, 
+  MessageCorrection 
+} from './conversation.store';
 
 // ─── Action Creators ──────────────────────────────────────────────────────────
 
 export const actions = {
-  setConnectionStatus: (status: ConnectionStatus): ConversationAction => ({
-    type: 'SET_CONNECTION_STATUS',
+  setWSStatus: (status: WSStatus): FluentAction => ({
+    type: 'SET_WS_STATUS',
     payload: status,
   }),
 
-  setSessionId: (sessionId: string | null): ConversationAction => ({
+  setSessionId: (sessionId: string | null): FluentAction => ({
     type: 'SET_SESSION_ID',
     payload: sessionId,
   }),
 
-  setAppState: (appState: AppState): ConversationAction => ({
-    type: 'SET_APP_STATE',
-    payload: appState,
+  setLatency: (latency: number): FluentAction => ({
+    type: 'SET_LATENCY',
+    payload: latency,
   }),
 
-  setTranscript: (text: string): ConversationAction => ({
-    type: 'SET_TRANSCRIPT',
+  setOrbState: (orbState: OrbState): FluentAction => ({
+    type: 'SET_ORB_STATE',
+    payload: orbState,
+  }),
+
+  setMicPermission: (permission: MicPermission): FluentAction => ({
+    type: 'SET_MIC_PERMISSION',
+    payload: permission,
+  }),
+
+  setLiveTranscript: (text: string): FluentAction => ({
+    type: 'SET_LIVE_TRANSCRIPT',
     payload: text,
   }),
 
-  addUserMessage: (content: string, timestamp?: string): ConversationAction => ({
-    type: 'ADD_USER_MESSAGE',
-    payload: { content, timestamp: timestamp ?? new Date().toISOString() },
+  setIsListening: (isListening: boolean): FluentAction => ({
+    type: 'SET_IS_LISTENING',
+    payload: isListening,
   }),
 
-  addAIMessage: (content: string, timestamp?: string): ConversationAction => ({
-    type: 'ADD_AI_MESSAGE',
-    payload: { content, timestamp: timestamp ?? new Date().toISOString() },
-  }),
-
-  addGrammarCorrection: (messageId: string, correction: GrammarCorrection): ConversationAction => ({
-    type: 'ADD_GRAMMAR_CORRECTION',
-    payload: { messageId, correction },
-  }),
-
-  setAISpeaking: (isSpeaking: boolean): ConversationAction => ({
-    type: 'SET_AI_SPEAKING',
-    payload: isSpeaking,
-  }),
-
-  setMicActive: (isActive: boolean): ConversationAction => ({
-    type: 'SET_MIC_ACTIVE',
-    payload: isActive,
-  }),
-
-  setError: (message: string): ConversationAction => ({
-    type: 'SET_ERROR',
+  addMessage: (message: Message): FluentAction => ({
+    type: 'ADD_MESSAGE',
     payload: message,
   }),
 
-  clearError: (): ConversationAction => ({
-    type: 'CLEAR_ERROR',
+  appendToLastMessage: (role: 'user' | 'ai', content: string): FluentAction => ({
+    type: 'APPEND_TO_LAST_MESSAGE',
+    payload: { role, content },
   }),
 
-  reset: (): ConversationAction => ({
+  addCorrection: (messageId: string, correction: MessageCorrection): FluentAction => ({
+    type: 'ADD_CORRECTION',
+    payload: { messageId, correction },
+  }),
+
+  setUserAudioLevels: (levels: number[]): FluentAction => ({
+    type: 'SET_USER_AUDIO_LEVELS',
+    payload: levels,
+  }),
+
+  setAIAudioLevel: (level: number): FluentAction => ({
+    type: 'SET_AI_AUDIO_LEVEL',
+    payload: level,
+  }),
+
+  setIsPaused: (isPaused: boolean): FluentAction => ({
+    type: 'SET_IS_PAUSED',
+    payload: isPaused,
+  }),
+
+  reset: (): FluentAction => ({
     type: 'RESET',
   }),
 };
