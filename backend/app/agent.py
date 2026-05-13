@@ -1,6 +1,7 @@
 import asyncio
 import os
 import re
+import json
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -87,9 +88,19 @@ async def entrypoint(ctx: JobContext):
             if match:
                 original, corrected = match.groups()
                 logger.info(f"Detected correction: {original} -> {corrected}")
-                # Send data message to the room for the frontend to show a toast
+                
+                # Send JSON matching the new schema
+                event = {
+                    "type": "grammar_correction",
+                    "payload": {
+                        "original": original,
+                        "corrected": corrected,
+                        "fullPhrase": f"{corrected} not {original}",
+                        "position": "inline"
+                    }
+                }
                 asyncio.create_task(ctx.room.local_participant.publish_data(
-                    payload=f"grammar_correction|{original}|{corrected}".encode(),
+                    payload=json.dumps(event).encode(),
                     reliable=True
                 ))
 
