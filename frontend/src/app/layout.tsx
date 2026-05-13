@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import { ConversationProvider } from '../../store/conversation.context';
 
 export const metadata: Metadata = {
   title: 'FluentFlow AI — Real-time English Conversation Tutor',
@@ -30,7 +31,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="antialiased">
-        {children}
+        <ConversationProvider>
+          {children}
+        </ConversationProvider>
       </body>
     </html>
   );
