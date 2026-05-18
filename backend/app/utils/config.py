@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     livekit_api_key: str
     livekit_api_secret: str
     livekit_url: str = "wss://fluentflow.livekit.cloud" # Placeholder
-    database_url: str
+    database_url: str = "sqlite+aiosqlite:///./test.db"
     groq_model: str = "llama-3.3-70b-versatile"
     log_level: str = "INFO"
     
