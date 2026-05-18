@@ -8,6 +8,7 @@ import {
 import '@livekit/components-styles';
 import { Track, RemoteParticipant } from 'livekit-client';
 import VoiceInterface from '../../components/VoiceInterface';
+import { BACKEND_API_URL } from '../../services/config';
 
 function AIAudioRenderer() {
   const tracks = useTracks([{ source: Track.Source.Microphone, withPlaceholder: false }], { onlySubscribed: true });
@@ -34,9 +35,8 @@ export default function HomePage() {
   const [url, setUrl] = useState('');
 
   useEffect(() => {
-    // Fetch token from our FastAPI backend
-    const host = window.location.hostname === 'localhost' ? 'http://localhost:8000' : '';
-    fetch(`${host}/api/token`)
+    // Fetch token from our FastAPI backend using environment-configured BACKEND_API_URL
+    fetch(`${BACKEND_API_URL}/api/token`)
       .then(res => res.json())
       .then(data => {
         setToken(data.token);
