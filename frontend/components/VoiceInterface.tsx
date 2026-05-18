@@ -22,6 +22,28 @@ export default function VoiceInterface() {
   const animationRef = useRef<number>();
   const analyserRef = useRef<AnalyserNode | null>(null);
   const dataArrayRef = useRef<Uint8Array | null>(null);
+  const messagesRef = useRef(state.messages);
+  useEffect(() => { messagesRef.current = state.messages; }, [state.messages]);
+
+  const handleStop = () => {
+    const assistantTrack = assistantAudioTrack?.track?.mediaStreamTrack;
+    if (assistantTrack) {
+      assistantTrack.enabled = false;
+      setTimeout(() => { assistantTrack.enabled = true; }, 300);
+    }
+    localParticipant?.setMicrophoneEnabled(false);
+    setTimeout(() => localParticipant?.setMicrophoneEnabled(true), 300);
+    dispatch(actions.setIsPaused(false));
+    dispatch(actions.setOrbState('listening'));
+    dispatch(actions.setLiveTranscript(''));
+  };
+
+  // ─── PAUSE & RESUME AUDIO TRACK SYNC ────────────────
+  useEffect(() => {
+    const assistantTrack = assistantAudioTrack?.track?.mediaStreamTrack;
+    if (!assistantTrack) return;
+    assistantTrack.enabled = !state.isPaused;
+  }, [assistantAudioTrack, state.isPaused]);
 
   // ─── MIC PERMISSION FLOW ───────────────────────────
   useEffect(() => {
@@ -39,6 +61,47 @@ export default function VoiceInterface() {
       checkPermission();
     }
   }, [state.micPermission, dispatch]);
+
+  // ─── LIVEKIT CONNECTION STATE SYNC ─────────────────
+  useEffect(() => {
+    if (!room) return;
+
+    const syncConnectionState = () => {
+      let status: any = 'disconnected';
+      if (room.state === 'connected') status = 'connected';
+      else if (room.state === 'connecting') status = 'connecting';
+      else if (room.state === 'reconnecting') status = 'reconnecting';
+      
+      dispatch(actions.setWSStatus(status));
+      if (room.state === 'connected') {
+        dispatch(actions.setSessionId(room.sid || 'livekit-session'));
+      }
+    };
+
+    syncConnectionState();
+
+    room.on(RoomEvent.ConnectionStateChanged, syncConnectionState);
+    return () => {
+      room.off(RoomEvent.ConnectionStateChanged, syncConnectionState);
+    };
+  }, [room, dispatch]);
+
+  // ─── LATENCY SIMULATION FOR VISUALS ─────────────────
+  useEffect(() => {
+    if (state.wsStatus !== 'connected') {
+      dispatch(actions.setLatency(0));
+      return;
+    }
+
+    const interval = setInterval(() => {
+      // Simulate low-latency jitter typical of WebRTC LiveKit connections
+      const baseLatency = 35;
+      const jitter = Math.floor(Math.random() * 15);
+      dispatch(actions.setLatency(baseLatency + jitter));
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [state.wsStatus, dispatch]);
 
   // ─── DATA CHANNEL INTEGRATION ────────────────────
   useEffect(() => {
@@ -71,7 +134,7 @@ export default function VoiceInterface() {
             dispatch(actions.appendToLastMessage('ai', event.payload.text));
             break;
           case 'grammar_correction':
-            const lastMessage = state.messages[state.messages.length - 1];
+            const lastMessage = messagesRef.current[messagesRef.current.length - 1];
             if (lastMessage && lastMessage.role === 'user') {
               dispatch(actions.addCorrection(lastMessage.id, {
                 wrong: event.payload.original,
@@ -99,7 +162,7 @@ export default function VoiceInterface() {
 
     room.on(RoomEvent.DataReceived, handleData);
     return () => { room.off(RoomEvent.DataReceived, handleData); };
-  }, [room, dispatch, state.messages]);
+  }, [room, dispatch]);
 
   // ─── STATE MACHINE SYNC ───────────────────────────────────────
   useEffect(() => {
@@ -250,7 +313,7 @@ export default function VoiceInterface() {
         {/* ── CENTER AREA: FOCUS ── */}
         <section className="flex-1 flex flex-col items-center justify-center p-8 relative">
           
-          <div className="relative mb-16 flex items-center justify-center">
+          <div className="relative mb-10 flex items-center justify-center">
             {/* Animated Rings */}
             <div className="absolute inset-[-60px] border border-white/5 rounded-full animate-spin-slow opacity-20 pointer-events-none" style={{ animationDuration: '20s' }} />
             <div className="absolute inset-[-100px] border border-white/5 rounded-full animate-spin-slow opacity-10 pointer-events-none" style={{ animationDuration: '30s', animationDirection: 'reverse' }} />
@@ -289,9 +352,9 @@ export default function VoiceInterface() {
             </div>
           </div>
 
-          <div className="w-full max-w-2xl space-y-8">
+          <div className="w-full max-w-2xl space-y-4">
             {/* Visualizer */}
-            <div className="h-12 flex items-center justify-center gap-1">
+            <div className="h-6 flex items-center justify-center gap-1">
                {state.userAudioLevels.map((lvl, i) => (
                  <div 
                    key={i} 
@@ -310,13 +373,13 @@ export default function VoiceInterface() {
             </div>
 
             {/* Transcript Box */}
-            <div className="glass-card rounded-[32px] p-10 shadow-2xl relative overflow-hidden group">
+            <div className="glass-card rounded-[32px] p-6 shadow-2xl relative overflow-hidden group">
                <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500 opacity-50" />
-               <div className="text-xl md:text-2xl font-medium leading-relaxed text-slate-100 min-h-[4rem] text-center">
+               <div className="text-lg md:text-xl font-medium leading-relaxed text-slate-100 min-h-[2.5rem] text-center">
                   {state.liveTranscript ? (
                     <span className="fade-in-up">{state.liveTranscript}</span>
                   ) : (
-                    <span className="text-slate-500 font-normal italic opacity-40">Awaiting speech input...</span>
+                    <span className="text-slate-500/70 font-normal italic text-sm md:text-base opacity-60">Awaiting speech input...</span>
                   )}
                   {state.orbState === 'listening' && <span className="cursor-blink" />}
                </div>
@@ -331,6 +394,7 @@ export default function VoiceInterface() {
                     ? 'bg-amber-500 border-amber-400 text-white shadow-amber-500/20' 
                     : 'bg-white/5 border-white/10 text-slate-400 hover:border-indigo-500 hover:text-indigo-400'
                  }`}
+                 title={state.isPaused ? "Resume" : "Pause"}
                >
                  {state.isPaused ? (
                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" /></svg>
@@ -340,10 +404,13 @@ export default function VoiceInterface() {
                </button>
 
                <button 
-                onClick={() => window.location.reload()}
+                onClick={handleStop}
                 className="w-16 h-16 rounded-full bg-white/5 border-2 border-white/10 text-slate-500 hover:bg-red-500/10 hover:border-red-500/50 hover:text-red-400 transition-all duration-300"
+                title="Stop & Reset"
                >
-                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                   <rect x="6" y="6" width="12" height="12" rx="2" />
+                 </svg>
                </button>
             </div>
           </div>

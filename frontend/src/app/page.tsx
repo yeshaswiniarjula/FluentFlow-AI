@@ -3,10 +3,31 @@
 import { useEffect, useState } from 'react';
 import {
   LiveKitRoom,
-  RoomAudioRenderer,
+  useTracks,
 } from '@livekit/components-react';
 import '@livekit/components-styles';
+import { Track, RemoteParticipant } from 'livekit-client';
 import VoiceInterface from '../../components/VoiceInterface';
+
+function AIAudioRenderer() {
+  const tracks = useTracks([{ source: Track.Source.Microphone, withPlaceholder: false }], { onlySubscribed: true });
+  useEffect(() => {
+    const cleanups: (() => void)[] = [];
+    tracks.forEach(({ participant, publication }) => {
+      if (!(participant instanceof RemoteParticipant)) return;
+      const track = publication?.track;
+      if (!track) return;
+      const audioEl = document.createElement('audio');
+      audioEl.autoplay = true;
+      audioEl.muted = false;
+      track.attach(audioEl);
+      document.body.appendChild(audioEl);
+      cleanups.push(() => { track.detach(audioEl); audioEl.remove(); });
+    });
+    return () => cleanups.forEach(fn => fn());
+  }, [tracks]);
+  return null;
+}
 
 export default function HomePage() {
   const [token, setToken] = useState('');
@@ -39,11 +60,15 @@ export default function HomePage() {
         serverUrl={url}
         token={token}
         connect={true}
-        audio={true}
+        audio={{
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        }}
         video={false}
       >
         <VoiceInterface />
-        <RoomAudioRenderer />
+        <AIAudioRenderer />
       </LiveKitRoom>
     </div>
   );
