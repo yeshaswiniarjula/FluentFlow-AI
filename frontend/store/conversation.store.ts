@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 // ─── State Types ─────────────────────────────────────────────────────────────
 
 export type WSStatus = 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
+export type ConnectionStatus = WSStatus;
 export type OrbState = 'idle' | 'listening' | 'processing' | 'speaking' | 'interrupted';
 export type MicPermission = 'prompt' | 'granted' | 'denied';
 
