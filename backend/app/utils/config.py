@@ -27,9 +27,11 @@ class Settings(BaseSettings):
     def validate_db_url(cls, v):
         if not v:
             return "sqlite+aiosqlite:///./test.db"
-        # Auto-upgrade bare postgresql:// -> postgresql+asyncpg://
+        # Auto-upgrade bare postgresql:// or postgres:// -> postgresql+asyncpg://
         if v.startswith('postgresql://'):
             return v.replace('postgresql://', 'postgresql+asyncpg://', 1)
+        if v.startswith('postgres://'):
+            return v.replace('postgres://', 'postgresql+asyncpg://', 1)
         # Accept asyncpg, sqlite, and railway internal (will be replaced at runtime)
         if v.startswith(('postgresql+asyncpg://', 'sqlite+aiosqlite://', 'sqlite://')):
             return v

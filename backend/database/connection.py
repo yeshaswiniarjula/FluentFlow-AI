@@ -12,7 +12,7 @@ if not settings.database_url:
 import os
 
 # Determine if we are running inside a Railway environment
-is_railway = os.environ.get("RAILWAY_ENVIRONMENT") is not None or os.environ.get("RAILWAY_STATIC_URL") is not None
+is_railway = os.environ.get("RAILWAY_ENVIRONMENT") is not None or os.environ.get("RAILWAY_STATIC_URL") is not None or os.environ.get("PORT") is not None
 
 db_url = settings.database_url
 if not db_url:
