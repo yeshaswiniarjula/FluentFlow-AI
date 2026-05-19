@@ -9,11 +9,24 @@ logger = logging.getLogger(__name__)
 if not settings.database_url:
     raise ValueError("DATABASE_URL is not set in the environment variables.")
 
-# Determine if we should use SQLite (default for local testing if Postgres URL is internal/invalid)
+import os
+
+# Determine if we are running inside a Railway environment
+is_railway = os.environ.get("RAILWAY_ENVIRONMENT") is not None or os.environ.get("RAILWAY_STATIC_URL") is not None
+
 db_url = settings.database_url
-if "railway.internal" in db_url or not db_url:
-    logger.info("Internal Railway URL detected. Falling back to local SQLite for testing.")
+if not db_url:
+    logger.info("No database URL provided. Using local SQLite.")
+    db_url = "sqlite+aiosqlite:////tmp/test.db" if is_railway else "sqlite+aiosqlite:///./test.db"
+elif "railway.internal" in db_url and not is_railway:
+    logger.info("Internal Railway URL detected locally. Falling back to local SQLite for testing.")
     db_url = "sqlite+aiosqlite:///./test.db"
+elif "sqlite" in db_url and is_railway:
+    # Ensure SQLite uses /tmp on Railway to avoid read-only filesystem errors
+    if ":///./" in db_url:
+        db_url = db_url.replace(":///./", ":////tmp/")
+    elif ":///" in db_url and not db_url.startswith("sqlite+aiosqlite:////tmp/"):
+        db_url = "sqlite+aiosqlite:////tmp/test.db"
 
 # SQLAlchemy async engine
 engine_args = {"echo": False}
