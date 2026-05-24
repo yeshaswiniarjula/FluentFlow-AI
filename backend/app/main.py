@@ -62,6 +62,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+async def root():
+    return {
+        "status": "ok",
+        "message": "FluentFlow AI Backend is running",
+        "version": "1.1.0"
+    }
+
 @app.get("/api/health")
 async def health_check():
     db_status = getattr(app.state, "db_status", "unknown")
