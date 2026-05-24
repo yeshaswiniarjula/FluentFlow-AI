@@ -8,7 +8,7 @@ import {
 import '@livekit/components-styles';
 import { Track, RemoteParticipant } from 'livekit-client';
 import VoiceInterface from '../../components/VoiceInterface';
-import { BACKEND_API_URL } from '../../services/config';
+
 
 function AIAudioRenderer() {
   const tracks = useTracks([{ source: Track.Source.Microphone, withPlaceholder: false }], { onlySubscribed: true });
@@ -35,8 +35,8 @@ export default function HomePage() {
   const [url, setUrl] = useState('');
 
   useEffect(() => {
-    // Fetch token from our FastAPI backend using environment-configured BACKEND_API_URL
-    fetch(`${BACKEND_API_URL}/api/token`)
+    // Fetch token from our FastAPI backend using relative endpoint proxied by Next.js rewrites
+    fetch('/api/token')
       .then(res => res.json())
       .then(data => {
         setToken(data.token);
@@ -44,6 +44,7 @@ export default function HomePage() {
       })
       .catch(err => console.error("Failed to fetch token. Is backend running?", err));
   }, []);
+
 
   if (!token) return (
     <div className="flex h-screen items-center justify-center bg-slate-950 text-white">
