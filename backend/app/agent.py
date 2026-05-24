@@ -13,6 +13,13 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 async def entrypoint(ctx: JobContext):
+    if not settings.is_configured:
+        logger.error(
+            f"Cannot start LiveKit agent: configuration is incomplete. "
+            f"Missing settings: {', '.join(settings.get_missing_settings())}"
+        )
+        return
+
     logger.info("Connecting to LiveKit room...")
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
 
