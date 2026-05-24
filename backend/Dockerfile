@@ -21,6 +21,7 @@ USER appuser
 # Expose port
 EXPOSE 8000
 
-# Start both the background LiveKit Agent worker and the FastAPI server concurrently
-CMD ["sh", "-c", "python -m app.agent start & uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Start both the background LiveKit Agent worker (unbuffered logs) and the FastAPI server concurrently
+CMD ["sh", "-c", "python -u -m app.agent start & uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+
 

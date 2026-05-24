@@ -59,15 +59,32 @@ async def get_db():
             await session.close()
 
 async def test_connection() -> bool:
-    """Test the database connection."""
+    """Test the database connection. Fallback to SQLite if primary connection fails."""
+    global async_engine, AsyncSessionLocal
     from sqlalchemy import text
     try:
         async with async_engine.begin() as conn:
             await conn.execute(text("SELECT 1"))
         return True
-    except SQLAlchemyError as e:
-        logger.error(f"Database connection failed: {e}")
-        return False # Changed to return False instead of raising to allow fallback logic
+    except Exception as e:
+        logger.warning(f"Primary database connection failed: {e}. Falling back to SQLite.")
+        fallback_url = "sqlite+aiosqlite:////tmp/test.db" if is_railway else "sqlite+aiosqlite:///./test.db"
+        async_engine = create_async_engine(fallback_url, echo=False)
+        AsyncSessionLocal = async_sessionmaker(
+            bind=async_engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+            autoflush=False
+        )
+        try:
+            async with async_engine.begin() as conn:
+                await conn.execute(text("SELECT 1"))
+            logger.info("Successfully initialized and connected to fallback SQLite database.")
+            return True
+        except Exception as fe:
+            logger.critical(f"SQLite fallback connection failed: {fe}")
+            return False
+
 
 async def create_tables():
     """Create all tables in the database."""

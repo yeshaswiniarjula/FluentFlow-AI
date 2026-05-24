@@ -46,21 +46,16 @@ export default function VoiceInterface() {
   }, [assistantAudioTrack, state.isPaused]);
 
   // ─── MIC PERMISSION FLOW ───────────────────────────
-  useEffect(() => {
-    const checkPermission = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        dispatch(actions.setMicPermission('granted'));
-        stream.getTracks().forEach(track => track.stop());
-      } catch (err) {
-        dispatch(actions.setMicPermission('denied'));
-      }
-    };
-
-    if (state.micPermission === 'prompt') {
-      checkPermission();
+  const handleRequestPermission = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      dispatch(actions.setMicPermission('granted'));
+      stream.getTracks().forEach(track => track.stop());
+    } catch (err) {
+      console.error("Microphone permission denied:", err);
+      dispatch(actions.setMicPermission('denied'));
     }
-  }, [state.micPermission, dispatch]);
+  };
 
   // ─── LIVEKIT CONNECTION STATE SYNC ─────────────────
   useEffect(() => {
@@ -236,7 +231,7 @@ export default function VoiceInterface() {
   }, [assistantAudioTrack, dispatch]);
 
   if (state.micPermission === 'denied') return <DeniedScreen />;
-  if (state.micPermission === 'prompt') return <PendingScreen onAllow={() => dispatch(actions.setMicPermission('granted'))} />;
+  if (state.micPermission === 'prompt') return <PendingScreen onAllow={handleRequestPermission} />;
 
   return (
     <div className="flex flex-col h-screen w-full bg-[#020617] text-slate-100 font-sans overflow-hidden">
